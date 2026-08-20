@@ -11,7 +11,8 @@ model Postcode {
   postcode   String
   locality   String
   town       String
-  district   String
+  district   String  @default("")
+  street     String   @default("")
   island     String   @default("Mauritius")
   createdAt  DateTime @default(now())
 

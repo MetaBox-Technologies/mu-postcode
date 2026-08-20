@@ -1,69 +1,143 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useCallback } from "react";
+
+type Result = {
+  id: string;
+  postcode: string;
+  locality: string;
+  town: string;
+  street: string;
+  island: string;
+};
 
 export default function Home() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Result[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const search = useCallback(async (value: string) => {
+    setQuery(value);
+    if (value.trim().length < 2) { setResults([]); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(value.trim())}`);
+      setResults(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const copy = (postcode: string) => {
+    navigator.clipboard.writeText(postcode);
+    setCopied(postcode);
+    setTimeout(() => setCopied(null), 1500);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main style={{ minHeight: "100vh", background: "#0a0a0a", color: "#ededed", fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "60px 20px 40px" }}>
+
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📮</div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Mauritius Postcode Finder</h1>
+          <p style={{ color: "#888", marginTop: 8, fontSize: 14 }}>Search by postcode, locality, town, or street</p>
+        </div>
+
+        {/* Search input */}
+        <div style={{ position: "relative", marginBottom: 24 }}>
+          <input
+            autoFocus
+            type="text"
+            value={query}
+            onChange={(e) => search(e.target.value)}
+            placeholder="e.g. 11101, Curepipe, Camp Firinga…"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "14px 18px",
+              fontSize: 16,
+              background: "#1a1a1a",
+              border: "1px solid #333",
+              borderRadius: 10,
+              color: "#ededed",
+              outline: "none",
+            }}
+          />
+          {loading && (
+            <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: "#666", fontSize: 13 }}>
+              …
+            </div>
+          )}
+        </div>
+
+        {/* Results */}
+        {results.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {results.map((r) => (
+              <div
+                key={r.id}
+                onClick={() => copy(r.postcode)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  background: "#141414",
+                  border: "1px solid #222",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  transition: "border-color 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#444")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#222")}
+              >
+                <div>
+                  <div>
+                    <span style={{ fontWeight: 600, fontSize: 15 }}>{r.locality || "—"}</span>
+                    <span style={{ color: "#666", fontSize: 13, marginLeft: 10 }}>{r.town}</span>
+                  </div>
+                  {r.street && (
+                    <div style={{ color: "#888", fontSize: 12, marginTop: 2 }}>{r.street}</div>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{
+                    fontFamily: "monospace",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: "#a0c4ff",
+                    letterSpacing: 1,
+                  }}>
+                    {r.postcode}
+                  </span>
+                  <span style={{ fontSize: 12, color: copied === r.postcode ? "#6fcf97" : "#444", minWidth: 40 }}>
+                    {copied === r.postcode ? "✓ copied" : "copy"}
+                  </span>
+                </div>
+              </div>
+            ))}
+            {results.length === 50 && (
+              <p style={{ textAlign: "center", color: "#555", fontSize: 13, marginTop: 8 }}>
+                Showing first 50 results — refine your search
+              </p>
+            )}
+          </div>
+        )}
+
+        {query.length >= 2 && !loading && results.length === 0 && (
+          <p style={{ textAlign: "center", color: "#555", fontSize: 14, marginTop: 40 }}>
+            No results for "{query}"
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        )}
+
+        {/* Footer */}
+        <p style={{ textAlign: "center", color: "#333", fontSize: 12, marginTop: 60 }}>
+          2,010 postcodes · Click any row to copy the postcode
+        </p>
+      </div>
+    </main>
   );
 }
