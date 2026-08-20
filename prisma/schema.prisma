@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Postcode {
+  id         String   @id @default(cuid())
+  postcode   String
+  locality   String
+  town       String
+  district   String
+  island     String   @default("Mauritius")
+  createdAt  DateTime @default(now())
+
+  @@index([postcode])
+  @@index([town])
+  @@index([locality])
+}
